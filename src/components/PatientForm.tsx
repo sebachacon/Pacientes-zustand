@@ -1,23 +1,33 @@
 import { useForm } from 'react-hook-form'
 import Error from './Error'
-import type { DraftPatient } from '../types'
+import { SPECIES, SPECIES_LABEL, type DraftPatient } from '../types'
 import { usePatientStore } from '../store'
 import { useEffect, useState } from 'react'
 import { toast } from 'react-toastify'
 import { CheckIcon } from './Icons'
+import { btnDark, btnGhost, btnPrimary, inputClass, labelClass } from './ui'
 
 const steps: { title: string, fields: (keyof DraftPatient)[] }[] = [
-    { title: 'Mascota', fields: ['name', 'date'] },
-    { title: 'Dueño', fields: ['caretaker', 'email'] },
+    { title: 'Mascota', fields: ['name', 'species', 'breed', 'date', 'age', 'weight'] },
+    { title: 'Dueño', fields: ['caretaker', 'email', 'phone'] },
     { title: 'Síntomas', fields: ['symptoms'] },
 ]
 
-const inputClass = (hasError: boolean) =>
-    `w-full min-w-0 rounded-2xl border-2 bg-white px-[18px] py-3.5 text-[17px] outline-none transition-colors placeholder:text-muted focus:border-brand ${
-        hasError ? 'border-brand-dark bg-danger-soft' : 'border-line'
-    }`
+const emptyPatient: DraftPatient = {
+    name: '',
+    species: 'perro',
+    breed: '',
+    age: null,
+    weight: null,
+    caretaker: '',
+    email: '',
+    phone: '',
+    date: '',
+    symptoms: '',
+}
 
-const labelClass = 'text-[15px] font-extrabold'
+const toNumberOrNull = (value: unknown) =>
+    value === '' || value === null || value === undefined ? null : Number(value)
 
 export default function PatientForm() {
 
@@ -25,6 +35,7 @@ export default function PatientForm() {
     const activeId = usePatientStore(state => state.activeId)
     const patients = usePatientStore(state => state.patients)
     const updatePatient = usePatientStore(state => state.updatePatient)
+    const clearActive = usePatientStore(state => state.clearActive)
 
     const [step, setStep] = useState(0)
     const [prevActiveId, setPrevActiveId] = useState(activeId)
@@ -35,17 +46,20 @@ export default function PatientForm() {
         if (activeId) setStep(0)
     }
 
-    const {register, handleSubmit, setValue, formState: {errors}, reset, trigger} = useForm<DraftPatient>()
+    const {register, handleSubmit, formState: {errors}, reset, trigger} = useForm<DraftPatient>({
+        defaultValues: emptyPatient
+    })
 
     useEffect(() => {
         if(activeId) {
-           const activePatient = patients.filter(patient => patient.id === activeId)[0]
-           setValue('name', activePatient.name)
-           setValue('caretaker', activePatient.caretaker)
-           setValue('date', activePatient.date)
-           setValue('email', activePatient.email)
-           setValue('symptoms', activePatient.symptoms)
+           const activePatient = patients.find(patient => patient.id === activeId)
+           if (!activePatient) return
+           // eslint-disable-next-line @typescript-eslint/no-unused-vars
+           const { id, consultations, dischargeDate, ...draft } = activePatient
+           reset({ ...emptyPatient, ...draft })
         }
+    // Solo se cargan los datos al cambiar de paciente activo
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeId])
 
     const registerPatient = (data: DraftPatient) => {
@@ -56,7 +70,13 @@ export default function PatientForm() {
         addPatient(data)
         toast.success('Paciente Registrado Correctamente')
         }
-        reset()
+        reset(emptyPatient)
+        setStep(0)
+    }
+
+    const cancelEdit = () => {
+        clearActive()
+        reset(emptyPatient)
         setStep(0)
     }
 
@@ -110,6 +130,12 @@ export default function PatientForm() {
                     )
                 })}
             </ol>
+
+            {activeId && (
+                <button type="button" onClick={cancelEdit} className={`${btnGhost} mt-6`}>
+                    Cancelar edición
+                </button>
+            )}
         </div>
 
         <form
@@ -134,22 +160,86 @@ export default function PatientForm() {
                 </div>
 
                 <div className="flex min-w-0 flex-col gap-2">
-                    <label htmlFor="date" className={labelClass}>Fecha de alta</label>
+                    <label htmlFor="species" className={labelClass}>Especie</label>
+                    <select
+                        id="species"
+                        className={`${inputClass(!!errors.species)} cursor-pointer`}
+                        {...register('species', { required: 'La especie es obligatoria' })}
+                    >
+                        {SPECIES.map(species => (
+                            <option key={species} value={species}>{SPECIES_LABEL[species]}</option>
+                        ))}
+                    </select>
+                    {errors.species && <Error>{errors.species?.message}</Error>}
+                </div>
+
+                <div className="flex min-w-0 flex-col gap-2">
+                    <label htmlFor="breed" className={labelClass}>Raza <span className="font-semibold text-muted">(opcional)</span></label>
+                    <input
+                        id="breed"
+                        className={inputClass()}
+                        type="text"
+                        placeholder="Ej. Labrador, Siamés, Mestizo"
+                        {...register('breed')}
+                    />
+                </div>
+
+                <div className="flex min-w-0 flex-col gap-2">
+                    <label htmlFor="date" className={labelClass}>Fecha de ingreso</label>
                     <input
                         id="date"
                         className={inputClass(!!errors.date)}
                         type="date"
                         aria-invalid={!!errors.date}
                         {...register('date', {
-                            required: 'La fecha de alta es obligatoria'
+                            required: 'La fecha de ingreso es obligatoria'
                         })}
                     />
                     {errors.date && <Error>{errors.date?.message}</Error>}
                 </div>
+
+                <div className="flex min-w-0 flex-col gap-2">
+                    <label htmlFor="age" className={labelClass}>Edad en años <span className="font-semibold text-muted">(opcional)</span></label>
+                    <input
+                        id="age"
+                        className={inputClass(!!errors.age)}
+                        type="number"
+                        inputMode="decimal"
+                        min={0}
+                        max={50}
+                        step={0.5}
+                        placeholder="Ej. 3"
+                        aria-invalid={!!errors.age}
+                        {...register('age', {
+                            setValueAs: toNumberOrNull,
+                            validate: value => value === null || (value >= 0 && value <= 50) || 'Edad no válida'
+                        })}
+                    />
+                    {errors.age && <Error>{errors.age?.message}</Error>}
+                </div>
+
+                <div className="flex min-w-0 flex-col gap-2">
+                    <label htmlFor="weight" className={labelClass}>Peso en kg <span className="font-semibold text-muted">(opcional)</span></label>
+                    <input
+                        id="weight"
+                        className={inputClass(!!errors.weight)}
+                        type="number"
+                        inputMode="decimal"
+                        min={0}
+                        step={0.1}
+                        placeholder="Ej. 12.5"
+                        aria-invalid={!!errors.weight}
+                        {...register('weight', {
+                            setValueAs: toNumberOrNull,
+                            validate: value => value === null || (value > 0 && value <= 500) || 'Peso no válido'
+                        })}
+                    />
+                    {errors.weight && <Error>{errors.weight?.message}</Error>}
+                </div>
             </div>
 
             <div className={step === 1 ? 'grid gap-5 sm:grid-cols-2' : 'hidden'}>
-                <div className="flex min-w-0 flex-col gap-2">
+                <div className="flex min-w-0 flex-col gap-2 sm:col-span-2">
                     <label htmlFor="caretaker" className={labelClass}>Nombre del dueño</label>
                     <input
                         id="caretaker"
@@ -182,6 +272,26 @@ export default function PatientForm() {
                     />
                     {errors.email && <Error>{errors.email?.message}</Error>}
                 </div>
+
+                <div className="flex min-w-0 flex-col gap-2">
+                    <label htmlFor="phone" className={labelClass}>Teléfono <span className="font-semibold text-muted">(opcional)</span></label>
+                    <input
+                        id="phone"
+                        className={inputClass(!!errors.phone)}
+                        type="tel"
+                        inputMode="tel"
+                        autoComplete="tel"
+                        placeholder="Ej. +56 9 1234 5678"
+                        aria-invalid={!!errors.phone}
+                        {...register('phone', {
+                            pattern: {
+                                value: /^\+?[\d\s()-]{7,20}$/,
+                                message: 'Teléfono no válido'
+                            }
+                        })}
+                    />
+                    {errors.phone && <Error>{errors.phone?.message}</Error>}
+                </div>
             </div>
 
             <div className={step === 2 ? 'flex flex-col gap-2' : 'hidden'}>
@@ -204,26 +314,17 @@ export default function PatientForm() {
                     type="button"
                     onClick={() => setStep(current => Math.max(current - 1, 0))}
                     disabled={step === 0}
-                    className="min-h-[50px] cursor-pointer rounded-full border-2 border-line bg-white px-6 font-extrabold text-muted transition-colors hover:border-muted disabled:cursor-not-allowed disabled:opacity-50"
+                    className={`${btnGhost} min-h-[50px] px-6`}
                 >
                     Atrás
                 </button>
 
                 {isLastStep ? (
-                    <button
-                        key="submit"
-                        type="submit"
-                        className="min-h-[50px] cursor-pointer rounded-full bg-brand px-8 font-extrabold text-white transition-colors hover:bg-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-                    >
-                        Guardar Paciente
+                    <button key="submit" type="submit" className={`${btnPrimary} min-h-[50px] px-8`}>
+                        {activeId ? 'Guardar Cambios' : 'Guardar Paciente'}
                     </button>
                 ) : (
-                    <button
-                        key="next"
-                        type="button"
-                        onClick={goNext}
-                        className="min-h-[50px] cursor-pointer rounded-full bg-ink px-8 font-extrabold text-white transition-colors hover:bg-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-                    >
+                    <button key="next" type="button" onClick={goNext} className={`${btnDark} min-h-[50px] px-8`}>
                         Siguiente: {steps[step + 1].title}
                     </button>
                 )}
