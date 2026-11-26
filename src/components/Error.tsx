@@ -1,6 +1,10 @@
+import { AlertIcon } from './Icons'
 
 export default function Error({children} : {children: React.ReactNode}) {
   return (
-    <p className="text-center my-4 bg-red-600 text-white font-bold p-3 uppercase text-sm">{children}</p>
+    <p role="alert" className="flex items-center gap-1.5 text-sm font-semibold text-brand-dark">
+      <AlertIcon className="size-4 shrink-0" />
+      {children}
+    </p>
   )
 }
