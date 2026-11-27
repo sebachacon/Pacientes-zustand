@@ -37,8 +37,8 @@ function AppointmentEditForm({ appointment, canChangePatient, onDone }: {
   const { id, ...draft } = appointment
   const { register, handleSubmit, formState: { errors } } = useForm<DraftAppointment>({ defaultValues: draft })
 
-  const onSubmit = (data: DraftAppointment) => {
-    updateAppointment(appointment.id, data)
+  const onSubmit = async (data: DraftAppointment) => {
+    if (!await updateAppointment(appointment.id, data)) return
     toast.success('Cita actualizada')
     onDone()
   }
@@ -162,8 +162,8 @@ function ReminderEditForm({ reminder, canChangePatient, onDone }: {
     defaultValues: { patientId: reminder.patientId, type: reminder.type, name: reminder.name, dueDate: reminder.dueDate }
   })
 
-  const onSubmit = (data: DraftReminder) => {
-    updateReminder(reminder.id, data)
+  const onSubmit = async (data: DraftReminder) => {
+    if (!await updateReminder(reminder.id, data)) return
     toast.success('Recordatorio actualizado')
     onDone()
   }
@@ -220,13 +220,13 @@ export function ReminderItem({ reminder, showPatient = true }: { reminder: Remin
     return <ReminderEditForm reminder={reminder} canChangePatient={showPatient} onDone={() => setMode('view')} />
   }
 
-  const toggle = () => {
-    toggleReminder(reminder.id)
+  const toggle = async () => {
+    if (!await toggleReminder(reminder.id)) return
     toast.info(reminder.done ? 'Recordatorio marcado como pendiente' : 'Recordatorio marcado como hecho')
   }
 
-  const remove = () => {
-    deleteReminder(reminder.id)
+  const remove = async () => {
+    if (!await deleteReminder(reminder.id)) return
     toast('Recordatorio eliminado', { type: 'error' })
   }
 

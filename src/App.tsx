@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { ToastContainer } from 'react-toastify'
 import PatientForm from "./components/PatientForm"
 import PatientsList from "./components/PatientsList"
 import PatientDetailModal from './components/PatientDetailModal'
@@ -8,7 +7,7 @@ import RemindersView from './components/RemindersView'
 import { BellIcon, CalendarIcon, PawIcon, PlusIcon, SearchIcon } from './components/Icons'
 import { usePatientStore } from './store'
 import { daysUntil, todayYMD } from './utils/date'
-import "react-toastify/dist/ReactToastify.css"
+import { supabase } from './lib/supabase'
 
 type View = 'pacientes' | 'agenda' | 'recordatorios'
 
@@ -52,6 +51,13 @@ function App() {
               <PawIcon />
             </div>
             <span className="text-xl font-black">Veterinaria</span>
+            <button
+              type="button"
+              onClick={() => supabase.auth.signOut()}
+              className="ml-2 min-h-11 cursor-pointer rounded-full px-3 text-sm font-bold text-muted-dark hover:text-ink hover:underline"
+            >
+              Cerrar sesión
+            </button>
           </div>
 
           <nav aria-label="Secciones" className="order-last flex w-full gap-1 overflow-x-auto rounded-full bg-white p-1.5 shadow-[0_2px_0_var(--color-line)] md:order-none md:w-auto">
@@ -149,7 +155,6 @@ function App() {
       </div>
 
       <PatientDetailModal onEdit={editPatient} />
-      <ToastContainer position="top-right" autoClose={3000} theme="colored" />
     </>
   )
 }

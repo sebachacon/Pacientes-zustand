@@ -233,14 +233,14 @@ function DischargePanel({ patient, stayDays }: { patient: Patient, stayDays: num
     defaultValues: { dischargeDate: todayYMD() }
   })
 
-  const onSubmit = ({ dischargeDate }: { dischargeDate: string }) => {
-    dischargePatient(patient.id, dischargeDate)
+  const onSubmit = async ({ dischargeDate }: { dischargeDate: string }) => {
+    if (!await dischargePatient(patient.id, dischargeDate)) return
     toast.success(`${patient.name} fue dado de alta`)
     setOpen(false)
   }
 
-  const reopen = () => {
-    reopenPatient(patient.id)
+  const reopen = async () => {
+    if (!await reopenPatient(patient.id)) return
     reset({ dischargeDate: todayYMD() })
     toast.info('Caso reabierto: el paciente vuelve a tratamiento')
   }
@@ -313,8 +313,8 @@ function History({ patient }: { patient: Patient }) {
     .filter((c): c is Consultation & { weight: number } => c.weight !== null && c.weight !== undefined)
     .sort((a, b) => a.date.localeCompare(b.date))
 
-  const onSubmit = (data: DraftConsultation) => {
-    addConsultation(patient.id, data)
+  const onSubmit = async (data: DraftConsultation) => {
+    if (!await addConsultation(patient.id, data)) return
     toast.success('Consulta registrada')
     reset(initial)
     setShowForm(false)
