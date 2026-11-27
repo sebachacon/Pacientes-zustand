@@ -4,6 +4,7 @@ import PatientsList from "./components/PatientsList"
 import PatientDetailModal from './components/PatientDetailModal'
 import AgendaView from './components/AgendaView'
 import RemindersView from './components/RemindersView'
+import ImportLocalBanner from './components/ImportLocalBanner'
 import { BellIcon, CalendarIcon, PawIcon, PlusIcon, SearchIcon } from './components/Icons'
 import { usePatientStore } from './store'
 import { daysUntil, todayYMD } from './utils/date'
@@ -96,6 +97,8 @@ function App() {
             <div className="hidden sm:block sm:w-72" aria-hidden="true" />
           )}
         </header>
+
+        <ImportLocalBanner />
 
         {view === 'pacientes' && (
           <>
