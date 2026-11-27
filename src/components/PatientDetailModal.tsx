@@ -2,6 +2,7 @@ import { useId, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'react-toastify'
 import { usePatientStore } from '../store'
+import { useCan } from '../hooks/useUser'
 import { SPECIES_LABEL, type Consultation, type DraftConsultation, type Patient } from '../types'
 import { formatDate, parseYMD, todayYMD } from '../utils/date'
 import { formatAge, formatWeight, initialOf, tintFor } from '../utils/patient'
@@ -49,7 +50,9 @@ function PatientFile({ patient, titleId, onEdit, onClose }: {
 
   const allAppointments = usePatientStore(state => state.appointments)
   const allReminders = usePatientStore(state => state.reminders)
-  const [tab, setTab] = useState<Tab>('historial')
+  const canViewHistory = useCan('viewClinicalHistory')
+  const visibleTabs = tabs.filter(item => item.id !== 'historial' || canViewHistory)
+  const [tab, setTab] = useState<Tab>(canViewHistory ? 'historial' : 'citas')
 
   const tint = tintFor(patient.id)
   const appointments = allAppointments
@@ -164,7 +167,7 @@ function PatientFile({ patient, titleId, onEdit, onClose }: {
 
         <div>
           <div role="tablist" aria-label="Secciones de la ficha" className="flex flex-wrap gap-2">
-            {tabs.map(item => (
+            {visibleTabs.map(item => (
               <button
                 key={item.id}
                 id={`tab-${item.id}`}
@@ -184,7 +187,7 @@ function PatientFile({ patient, titleId, onEdit, onClose }: {
           </div>
 
           <div id={`panel-${tab}`} role="tabpanel" aria-labelledby={`tab-${tab}`} className="mt-5">
-            {tab === 'historial' && <History patient={patient} />}
+            {tab === 'historial' && canViewHistory && <History patient={patient} />}
 
             {tab === 'citas' && (
               <div className="grid gap-6 lg:grid-cols-2">
@@ -226,6 +229,7 @@ function DischargePanel({ patient, stayDays }: { patient: Patient, stayDays: num
 
   const dischargePatient = usePatientStore(state => state.dischargePatient)
   const reopenPatient = usePatientStore(state => state.reopenPatient)
+  const canDischarge = useCan('dischargePatient')
   const [open, setOpen] = useState(false)
   const uid = useId()
 
@@ -255,7 +259,7 @@ function DischargePanel({ patient, stayDays }: { patient: Patient, stayDays: num
             <p className="font-semibold">Estuvo en tratamiento {stayDays} {stayDays === 1 ? 'día' : 'días'}.</p>
           )}
         </div>
-        <button type="button" onClick={reopen} className={btnGhost}>Reabrir caso</button>
+        {canDischarge && <button type="button" onClick={reopen} className={btnGhost}>Reabrir caso</button>}
       </section>
     )
   }
@@ -265,9 +269,13 @@ function DischargePanel({ patient, stayDays }: { patient: Patient, stayDays: num
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h3 className="text-xs font-extrabold tracking-wide text-muted uppercase">Fecha de alta</h3>
-          <p className="mt-1 text-ink-soft">El paciente sigue en tratamiento. Regístrala cuando esté sano.</p>
+          <p className="mt-1 text-ink-soft">
+            {canDischarge
+              ? 'El paciente sigue en tratamiento. Regístrala cuando esté sano.'
+              : 'El paciente sigue en tratamiento. El alta la registra el equipo clínico.'}
+          </p>
         </div>
-        {!open && (
+        {canDischarge && !open && (
           <button type="button" onClick={() => setOpen(true)} className={btnPrimary}>Dar de alta</button>
         )}
       </div>
@@ -302,6 +310,7 @@ function History({ patient }: { patient: Patient }) {
 
   const addConsultation = usePatientStore(state => state.addConsultation)
   const deleteConsultation = usePatientStore(state => state.deleteConsultation)
+  const canDeleteConsultation = useCan('deleteConsultation')
   const [showForm, setShowForm] = useState(patient.consultations.length === 0)
   const uid = useId()
 
@@ -390,15 +399,17 @@ function History({ patient }: { patient: Patient }) {
                     <p className="text-sm font-semibold text-muted">Peso: {formatWeight(consultation.weight)}</p>
                   )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => deleteConsultation(patient.id, consultation.id)}
-                  aria-label="Eliminar consulta"
-                  title="Eliminar consulta"
-                  className={iconBtnDanger}
-                >
-                  <TrashIcon />
-                </button>
+                {canDeleteConsultation && (
+                  <button
+                    type="button"
+                    onClick={() => deleteConsultation(patient.id, consultation.id)}
+                    aria-label="Eliminar consulta"
+                    title="Eliminar consulta"
+                    className={iconBtnDanger}
+                  >
+                    <TrashIcon />
+                  </button>
+                )}
               </div>
               <dl className="mt-3 grid gap-3 sm:grid-cols-3">
                 {[
