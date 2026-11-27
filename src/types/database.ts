@@ -134,6 +134,36 @@ export type Database = {
         }
         Relationships: []
       }
+      staff: {
+        Row: {
+          created_at: string
+          email: string
+          full_name: string
+          phone: string
+          role: Database["public"]["Enums"]["staff_role"] | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string
+          full_name?: string
+          phone?: string
+          role?: Database["public"]["Enums"]["staff_role"] | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          full_name?: string
+          phone?: string
+          role?: Database["public"]["Enums"]["staff_role"] | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       reminders: {
         Row: {
           created_at: string
@@ -177,9 +207,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      delete_staff_account: {
+        Args: {
+          target_user: string
+        }
+        Returns: undefined
+      }
+      set_staff_role: {
+        Args: {
+          new_role: Database["public"]["Enums"]["staff_role"]
+          target_user: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
+      staff_role: "administrador" | "veterinario" | "tecnico" | "secretario"
       reminder_type: "vacuna" | "desparasitacion"
       species: "perro" | "gato" | "ave" | "conejo" | "roedor" | "reptil" | "otro"
     }

@@ -8,14 +8,21 @@ import ImportLocalBanner from './components/ImportLocalBanner'
 import { BellIcon, CalendarIcon, PawIcon, PlusIcon, SearchIcon } from './components/Icons'
 import { usePatientStore } from './store'
 import { daysUntil, todayYMD } from './utils/date'
-import { supabase } from './lib/supabase'
+import ProfileView from './components/ProfileView'
+import TeamView from './components/TeamView'
+import ProfileReminder from './components/ProfileReminder'
+import { staffName, useCan, useUser } from './hooks/useUser'
 
-type View = 'pacientes' | 'agenda' | 'recordatorios'
+type View = 'pacientes' | 'agenda' | 'recordatorios' | 'equipo' | 'perfil'
 
 function App() {
 
   const [view, setView] = useState<View>('pacientes')
   const [search, setSearch] = useState('')
+  const user = useUser()
+  const me = usePatientStore(state => state.me)
+  const canManageTeam = useCan('manageTeam')
+  const userName = staffName(me)
 
   const appointments = usePatientStore(state => state.appointments)
   const reminders = usePatientStore(state => state.reminders)
@@ -40,6 +47,7 @@ function App() {
     { id: 'pacientes', label: 'Pacientes', badge: 0 },
     { id: 'agenda', label: 'Agenda', badge: todaysAppointments },
     { id: 'recordatorios', label: 'Recordatorios', badge: urgentReminders },
+    ...(canManageTeam ? [{ id: 'equipo' as const, label: 'Equipo', badge: 0 }] : []),
   ]
 
   return (
@@ -52,13 +60,23 @@ function App() {
               <PawIcon />
             </div>
             <span className="text-xl font-black">Veterinaria</span>
-            <button
-              type="button"
-              onClick={() => supabase.auth.signOut()}
-              className="ml-2 min-h-11 cursor-pointer rounded-full px-3 text-sm font-bold text-muted-dark hover:text-ink hover:underline"
-            >
-              Cerrar sesión
-            </button>
+            {me && (
+              <button
+                type="button"
+                onClick={() => setView('perfil')}
+                aria-current={view === 'perfil' ? 'page' : undefined}
+                aria-label={`Mi perfil (${userName})`}
+                title="Mi perfil"
+                className={`ml-2 inline-flex min-h-11 max-w-48 cursor-pointer items-center gap-2 rounded-full py-1 pl-1 pr-4 font-bold transition-colors ${
+                  view === 'perfil' ? 'bg-ink text-white' : 'bg-white text-ink shadow-[0_2px_0_var(--color-line)] hover:text-brand-dark'
+                }`}
+              >
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand font-black text-white" aria-hidden="true">
+                  {userName.charAt(0).toUpperCase()}
+                </span>
+                <span className="truncate">{userName}</span>
+              </button>
+            )}
           </div>
 
           <nav aria-label="Secciones" className="order-last flex w-full gap-1 overflow-x-auto rounded-full bg-white p-1.5 shadow-[0_2px_0_var(--color-line)] md:order-none md:w-auto">
@@ -99,6 +117,7 @@ function App() {
         </header>
 
         <ImportLocalBanner />
+        {view !== 'perfil' && <ProfileReminder onComplete={() => setView('perfil')} />}
 
         {view === 'pacientes' && (
           <>
@@ -153,6 +172,20 @@ function App() {
           <>
             <h1 className="text-4xl font-black">Vacunas y desparasitación</h1>
             <RemindersView />
+          </>
+        )}
+
+        {view === 'equipo' && canManageTeam && (
+          <>
+            <h1 className="text-4xl font-black">Equipo</h1>
+            <TeamView />
+          </>
+        )}
+
+        {view === 'perfil' && user && me && (
+          <>
+            <h1 className="text-4xl font-black">Mi perfil</h1>
+            <ProfileView user={user} me={me} />
           </>
         )}
       </div>

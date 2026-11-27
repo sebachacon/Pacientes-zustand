@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { toast } from 'react-toastify'
 import { usePatientStore } from '../store'
+import { useCan } from '../hooks/useUser'
 import { archiveLocalData, importLocalData, readLocalData } from '../utils/importLocal'
 import { btnGhost, btnPrimary } from './ui'
 
@@ -10,8 +11,11 @@ export default function ImportLocalBanner() {
   const [data, setData] = useState(readLocalData)
   const [busy, setBusy] = useState(false)
   const loadAll = usePatientStore(state => state.loadAll)
+  const me = usePatientStore(state => state.me)
+  // La importación incluye la ficha clínica, así que solo la ofrecemos a quien puede registrarla
+  const allowed = useCan('addConsultation')
 
-  if (!data) return null
+  if (!data || !me || !allowed) return null
 
   const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
   const summary = [
@@ -26,7 +30,7 @@ export default function ImportLocalBanner() {
     try {
       await importLocalData(data)
       archiveLocalData()
-      await loadAll()
+      await loadAll(me.userId)
       toast.success(`Importados: ${summary}`)
       setData(null)
     } catch (error) {

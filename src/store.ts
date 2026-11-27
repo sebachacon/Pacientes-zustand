@@ -3,6 +3,7 @@ import { devtools } from 'zustand/middleware'
 import { toast } from 'react-toastify'
 import { supabase } from './lib/supabase'
 import type { Row } from './types/database'
+import type { Role } from './utils/permissions'
 import type {
     Appointment, Consultation, DraftAppointment, DraftConsultation, DraftPatient,
     DraftReminder, Patient, Reminder
@@ -91,6 +92,24 @@ const fail = (action: string, error: { message: string }) => {
 
 const PATIENT_SELECT = '*, consultations(*)'
 
+export type StaffMember = {
+    userId: string
+    email: string
+    fullName: string
+    phone: string
+    role: Role | null
+    createdAt: string
+}
+
+const toStaff = (row: Row<'staff'>): StaffMember => ({
+    userId: row.user_id,
+    email: row.email,
+    fullName: row.full_name,
+    phone: row.phone,
+    role: row.role,
+    createdAt: row.created_at,
+})
+
 type PatientState = {
     patients: Patient[]
     appointments: Appointment[]
@@ -100,8 +119,18 @@ type PatientState = {
     loading: boolean
     loaded: boolean
 
-    loadAll: () => Promise<void>
+    /** Miembro del equipo con sesión iniciada; su cargo define los permisos */
+    me: StaffMember | null
+    /** Todo el equipo (solo lo carga un administrador) */
+    staff: StaffMember[]
+
+    loadAll: (userId: string) => Promise<void>
     reset: () => void
+
+    updateMyProfile: (data: { fullName: string, phone: string }) => Promise<boolean>
+    loadStaff: () => Promise<void>
+    setStaffRole: (userId: string, role: Role) => Promise<boolean>
+    deleteStaffAccount: (userId: string) => Promise<boolean>
 
     addPatient: (data: DraftPatient) => Promise<boolean>
     deletePatient: (id: Patient['id']) => Promise<boolean>
@@ -135,6 +164,8 @@ const initialData = {
     detailId: '',
     loading: false,
     loaded: false,
+    me: null as StaffMember | null,
+    staff: [] as StaffMember[],
 }
 
 const replacePatient = (patients: Patient[], updated: Patient) =>
@@ -144,8 +175,23 @@ export const usePatientStore = create<PatientState>()(
     devtools((set, get) => ({
     ...initialData,
 
-    loadAll: async () => {
+    loadAll: async (userId) => {
         set({ loading: true })
+
+        const { data: meRow, error: meError } = await supabase
+            .from('staff').select('*').eq('user_id', userId).maybeSingle()
+        if (meError) {
+            set({ loading: false })
+            fail('cargar tu perfil', meError)
+            return
+        }
+        const me = meRow ? toStaff(meRow) : null
+        // Sin cargo asignado no hay acceso a datos: se muestra la pantalla de cuenta pendiente
+        if (!me?.role) {
+            set({ me, loading: false, loaded: true })
+            return
+        }
+
         const [patients, appointments, reminders] = await Promise.all([
             supabase.from('patients').select(PATIENT_SELECT).order('created_at'),
             supabase.from('appointments').select('*').order('date').order('time'),
@@ -158,6 +204,7 @@ export const usePatientStore = create<PatientState>()(
             return
         }
         set({
+            me,
             patients: (patients.data ?? []).map(toPatient),
             appointments: (appointments.data ?? []).map(toAppointment),
             reminders: (reminders.data ?? []).map(toReminder),
@@ -167,6 +214,43 @@ export const usePatientStore = create<PatientState>()(
     },
 
     reset: () => set({ ...initialData }),
+
+    updateMyProfile: async ({ fullName, phone }) => {
+        const me = get().me
+        if (!me) return false
+        const { data: row, error } = await supabase
+            .from('staff').update({ full_name: fullName, phone }).eq('user_id', me.userId).select().single()
+        if (error) return fail('guardar el perfil', error)
+        const updated = toStaff(row)
+        set((state) => ({
+            me: updated,
+            staff: state.staff.map(member => member.userId === updated.userId ? updated : member),
+        }))
+        return true
+    },
+    loadStaff: async () => {
+        const { data, error } = await supabase.from('staff').select('*').order('created_at')
+        if (error) {
+            fail('cargar el equipo', error)
+            return
+        }
+        set({ staff: (data ?? []).map(toStaff) })
+    },
+    setStaffRole: async (userId, role) => {
+        const { error } = await supabase.rpc('set_staff_role', { target_user: userId, new_role: role })
+        if (error) return fail('asignar el cargo', error)
+        set((state) => ({
+            staff: state.staff.map(member => member.userId === userId ? { ...member, role } : member),
+            me: state.me?.userId === userId ? { ...state.me, role } : state.me,
+        }))
+        return true
+    },
+    deleteStaffAccount: async (userId) => {
+        const { error } = await supabase.rpc('delete_staff_account', { target_user: userId })
+        if (error) return fail('eliminar la cuenta', error)
+        set((state) => ({ staff: state.staff.filter(member => member.userId !== userId) }))
+        return true
+    },
 
     addPatient: async (data) => {
         const { data: row, error } = await supabase

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { toast } from 'react-toastify'
 import { SPECIES_LABEL, type Patient } from "../types"
 import { usePatientStore } from "../store"
+import { useCan } from '../hooks/useUser'
 import { BellIcon, ChatIcon, CheckIcon, EditIcon, PhoneIcon, TrashIcon } from './Icons'
 import ConfirmDialog from './ConfirmDialog'
 import { formatDate } from '../utils/date'
@@ -20,6 +21,7 @@ export default function PatientDetails({ patient, pendingReminders, onEdit }: Pa
   const deletePatient = usePatientStore((state) => state.deletePatient)
   const openDetail = usePatientStore((state) => state.openDetail)
   const activeId = usePatientStore((state) => state.activeId)
+  const canDelete = useCan('deletePatient')
 
   const [confirmOpen, setConfirmOpen] = useState(false)
 
@@ -120,15 +122,17 @@ export default function PatientDetails({ patient, pendingReminders, onEdit }: Pa
             >
               <EditIcon />
             </button>
-            <button
-              type="button"
-              aria-label={`Eliminar ${patient.name}`}
-              title="Eliminar"
-              onClick={() => setConfirmOpen(true)}
-              className={iconBtnDanger}
-            >
-              <TrashIcon />
-            </button>
+            {canDelete && (
+              <button
+                type="button"
+                aria-label={`Eliminar ${patient.name}`}
+                title="Eliminar"
+                onClick={() => setConfirmOpen(true)}
+                className={iconBtnDanger}
+              >
+                <TrashIcon />
+              </button>
+            )}
           </div>
         </div>
       </div>
