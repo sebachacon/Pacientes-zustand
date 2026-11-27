@@ -62,13 +62,13 @@ export default function PatientForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeId])
 
-    const registerPatient = (data: DraftPatient) => {
+    const registerPatient = async (data: DraftPatient) => {
         if(activeId) {
-            updatePatient(data)
+            if (!await updatePatient(data)) return
             toast.success('Paciente Actualizado Correctamente')
         } else {
-        addPatient(data)
-        toast.success('Paciente Registrado Correctamente')
+            if (!await addPatient(data)) return
+            toast.success('Paciente Registrado Correctamente')
         }
         reset(emptyPatient)
         setStep(0)

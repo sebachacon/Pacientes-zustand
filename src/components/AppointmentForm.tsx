@@ -33,8 +33,8 @@ export default function AppointmentForm({ patientId, defaultDate }: AppointmentF
     if (defaultDate) setValue('date', defaultDate)
   }, [defaultDate, setValue])
 
-  const onSubmit = (data: DraftAppointment) => {
-    addAppointment({ ...data, patientId: patientId ?? data.patientId })
+  const onSubmit = async (data: DraftAppointment) => {
+    if (!await addAppointment({ ...data, patientId: patientId ?? data.patientId })) return
     toast.success('Cita agendada')
     reset({ ...initial, date: data.date })
   }

@@ -27,8 +27,8 @@ export default function ReminderForm({ patientId }: ReminderFormProps) {
     defaultValues: initial
   })
 
-  const onSubmit = (data: DraftReminder) => {
-    addReminder({ ...data, patientId: patientId ?? data.patientId })
+  const onSubmit = async (data: DraftReminder) => {
+    if (!await addReminder({ ...data, patientId: patientId ?? data.patientId })) return
     toast.success('Recordatorio creado')
     reset(initial)
   }

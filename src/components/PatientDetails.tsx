@@ -31,9 +31,9 @@ export default function PatientDetails({ patient, pendingReminders, onEdit }: Pa
     formatWeight(patient.weight),
   ].filter(Boolean)
 
-  const handleDelete = () => {
-    deletePatient(patient.id)
+  const handleDelete = async () => {
     setConfirmOpen(false)
+    if (!await deletePatient(patient.id)) return
     toast('Paciente Eliminado', {
       type: 'error'
     })
